@@ -8,7 +8,12 @@ This repository serves as a centralized collection of PowerShell modules. Each m
 
 ## 📦 Available Modules
 
-This section will list all modules once they are added to the `modules/` directory.
+Here you can view the Modules which currently exist in this Repository.
+
+|Module Name|Description|Link|
+|-|-|-|
+|PS.Capa.CapaOne|Unofficial API Wrapper for CapaSystems CapaOne |[PS.Capa.CapaOne](./modules/PS.Capa.CapaOne/)|
+|PS.ElasticShell|API Wrapper for interacting with ElasticSearch|[PS.ElasticShell](./modules/PS.ElasticShell/)|
 
 To see all modules, check the [modules](./modules) directory.
 
