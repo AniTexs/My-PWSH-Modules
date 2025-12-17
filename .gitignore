@@ -1,0 +1,42 @@
+# PowerShell
+*.ps1xml
+
+# Build artifacts
+/output/
+/dist/
+/publish/
+*.zip
+
+# Test results
+TestResults/
+*.trx
+coverage.xml
+
+# Module artifacts
+*.nupkg
+
+# Visual Studio Code
+.vscode/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+
+# PSGallery API keys
+apikey.txt
+nugetapikey.txt

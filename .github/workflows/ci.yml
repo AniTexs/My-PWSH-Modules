@@ -1,0 +1,103 @@
+name: CI - Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build and Test Modules
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PowerShell
+        shell: pwsh
+        run: |
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+          Write-Host "OS: $($PSVersionTable.OS)"
+      
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          Write-Host "Installing required modules..."
+          if (-not (Get-Module -ListAvailable -Name Pester)) {
+            Install-Module -Name Pester -Force -SkipPublisherCheck -Scope CurrentUser
+          }
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+            Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser
+          }
+          Write-Host "✓ Dependencies installed"
+      
+      - name: Discover modules
+        id: discover
+        shell: pwsh
+        run: |
+          $modulesPath = "./modules"
+          if (Test-Path $modulesPath) {
+            $modules = Get-ChildItem -Path $modulesPath -Directory | Select-Object -ExpandProperty Name
+            if ($modules) {
+              Write-Host "Found modules: $($modules -join ', ')"
+              echo "has_modules=true" >> $env:GITHUB_OUTPUT
+              echo "modules=$($modules -join ',')" >> $env:GITHUB_OUTPUT
+            } else {
+              Write-Host "No modules found"
+              echo "has_modules=false" >> $env:GITHUB_OUTPUT
+            }
+          } else {
+            Write-Host "Modules directory does not exist yet"
+            echo "has_modules=false" >> $env:GITHUB_OUTPUT
+          }
+      
+      - name: Run PSScriptAnalyzer
+        if: steps.discover.outputs.has_modules == 'true'
+        shell: pwsh
+        run: |
+          Write-Host "Running PSScriptAnalyzer..."
+          ./build/Invoke-Analyzer.ps1
+      
+      - name: Build modules
+        if: steps.discover.outputs.has_modules == 'true'
+        shell: pwsh
+        run: |
+          $modules = "${{ steps.discover.outputs.modules }}" -split ','
+          foreach ($module in $modules) {
+            Write-Host "Building module: $module"
+            ./build/Build-Module.ps1 -ModuleName $module
+          }
+      
+      - name: Run tests
+        if: steps.discover.outputs.has_modules == 'true'
+        shell: pwsh
+        run: |
+          Write-Host "Running all tests..."
+          ./build/Test-All.ps1 -OutputDirectory ./TestResults
+      
+      - name: Upload test results
+        if: always() && steps.discover.outputs.has_modules == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: TestResults/
+          retention-days: 30
+      
+      - name: Upload build artifacts
+        if: matrix.os == 'ubuntu-latest' && steps.discover.outputs.has_modules == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-modules
+          path: output/
+          retention-days: 7
