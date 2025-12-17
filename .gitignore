@@ -1,5 +1,5 @@
 # PowerShell
-*.ps1xml
+# *.ps1xml
 
 # Build artifacts
 /output/
