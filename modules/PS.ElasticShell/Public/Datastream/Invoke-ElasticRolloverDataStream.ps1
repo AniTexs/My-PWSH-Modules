@@ -2,7 +2,7 @@ function Invoke-ElasticRolloverDataStream {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)][string]$Name,
-        [string]$NewBackingIndex # optional, e.g. ".ds-logs-bhj-prod-000123"
+        [string]$NewBackingIndex # optional, e.g. ".ds-logs-prod-000123"
     )
     $body = $null
     if ($NewBackingIndex) { $body = @{ new_index = $NewBackingIndex } }
