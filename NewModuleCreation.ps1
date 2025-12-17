@@ -39,6 +39,11 @@ function New-CustomModule {
         # Create Public folder
         Write-Verbose "Creating Public folder"
         New-Item -Path $ModulePath -Name "Public" -ItemType Directory | Out-Null
+        # Create Public folder
+        Write-Verbose "Creating Tests folder"
+        New-Item -Path $ModulePath -Name "Tests" -ItemType Directory | Out-Null
+        New-Item -Path $ModulePath -Name "README.md" -ItemType File | Out-Null
+        New-Item -Path $ModulePath -Name "CHANGELOG.md" -ItemType File | Out-Null
         # Create the Module Manifest file
         Write-Verbose "Creating module manifest: $ModuleName.psd1"
         New-ModuleManifest -Path $ModulePath\$ModuleName.psd1 -ModuleVersion $Version -Author $LoggedOnFullName -Description $Description -CompanyName "Individual" -RootModule "$ModuleName.psm1" -Copyright "(c) $LoggedOnFullName. All rights reserved." | Out-Null
