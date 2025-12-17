@@ -21,17 +21,17 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
       fail-fast: false
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup PowerShell
         shell: pwsh
         run: |
           Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
           Write-Host "OS: $($PSVersionTable.OS)"
-      
+
       - name: Install dependencies
         shell: pwsh
         run: |
@@ -43,7 +43,7 @@ jobs:
             Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser
           }
           Write-Host "✓ Dependencies installed"
-      
+
       - name: Discover modules
         id: discover
         shell: pwsh
@@ -63,14 +63,14 @@ jobs:
             Write-Host "Modules directory does not exist yet"
             echo "has_modules=false" >> $env:GITHUB_OUTPUT
           }
-      
+
       - name: Run PSScriptAnalyzer
         if: steps.discover.outputs.has_modules == 'true'
         shell: pwsh
         run: |
           Write-Host "Running PSScriptAnalyzer..."
           ./build/Invoke-Analyzer.ps1
-      
+
       - name: Build modules
         if: steps.discover.outputs.has_modules == 'true'
         shell: pwsh
@@ -80,14 +80,14 @@ jobs:
             Write-Host "Building module: $module"
             ./build/Build-Module.ps1 -ModuleName $module
           }
-      
+
       - name: Run tests
         if: steps.discover.outputs.has_modules == 'true'
         shell: pwsh
         run: |
           Write-Host "Running all tests..."
           ./build/Test-All.ps1 -OutputDirectory ./TestResults
-      
+
       - name: Upload test results
         if: always() && steps.discover.outputs.has_modules == 'true'
         uses: actions/upload-artifact@v4
@@ -95,7 +95,7 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: TestResults/
           retention-days: 30
-      
+
       - name: Upload build artifacts
         if: matrix.os == 'ubuntu-latest' && steps.discover.outputs.has_modules == 'true'
         uses: actions/upload-artifact@v4
