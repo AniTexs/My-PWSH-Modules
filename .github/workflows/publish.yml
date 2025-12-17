@@ -1,0 +1,112 @@
+name: Publish to PSGallery
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      module_name:
+        description: 'Module name to publish'
+        required: true
+        type: string
+      dry_run:
+        description: 'Perform a dry run (WhatIf)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    name: Publish Module to PSGallery
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PowerShell
+        shell: pwsh
+        run: |
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          Write-Host "Installing required modules..."
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+            Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser
+          }
+          Write-Host "✓ Dependencies installed"
+
+      - name: Determine module to publish
+        id: module
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $moduleName = "${{ inputs.module_name }}"
+            Write-Host "Publishing module from manual trigger: $moduleName"
+          } else {
+            # For release events, extract module name from tag
+            $tag = "${{ github.ref_name }}"
+            Write-Host "Release tag: $tag"
+
+            # Expected format: ModuleName-v1.0.0 or ModuleName/v1.0.0
+            if ($tag -match '^(.+?)[-/]v?\d+\.\d+\.\d+') {
+              $moduleName = $matches[1]
+              Write-Host "Extracted module name: $moduleName"
+            } else {
+              Write-Host "::error::Could not extract module name from tag: $tag"
+              Write-Host "Expected format: ModuleName-v1.0.0 or ModuleName/v1.0.0"
+              exit 1
+            }
+          }
+
+          # Verify module exists
+          $modulePath = "./modules/$moduleName"
+          if (-not (Test-Path $modulePath)) {
+            Write-Host "::error::Module not found: $modulePath"
+            exit 1
+          }
+
+          echo "module_name=$moduleName" >> $env:GITHUB_OUTPUT
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Write-Host "Running PSScriptAnalyzer on module..."
+          ./build/Invoke-Analyzer.ps1 -ModuleName "${{ steps.module.outputs.module_name }}"
+
+      - name: Build module
+        shell: pwsh
+        run: |
+          Write-Host "Building module..."
+          ./build/Build-Module.ps1 -ModuleName "${{ steps.module.outputs.module_name }}"
+
+      - name: Publish to PSGallery
+        if: ${{ !inputs.dry_run }}
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          if (-not $env:PSGALLERY_API_KEY) {
+            Write-Host "::error::PSGallery API key not found. Please set PSGALLERY_API_KEY secret."
+            exit 1
+          }
+
+          Write-Host "Publishing module to PSGallery..."
+          ./build/Publish-Module.ps1 `
+            -ModuleName "${{ steps.module.outputs.module_name }}" `
+            -ApiKey $env:PSGALLERY_API_KEY
+
+      - name: Dry run - WhatIf
+        if: ${{ inputs.dry_run }}
+        shell: pwsh
+        run: |
+          Write-Host "Dry run mode - would publish module: ${{ steps.module.outputs.module_name }}"
+          $manifestPath = "./output/${{ steps.module.outputs.module_name }}/${{ steps.module.outputs.module_name }}.psd1"
+          $manifest = Test-ModuleManifest -Path $manifestPath
+          Write-Host "Module: $($manifest.Name)"
+          Write-Host "Version: $($manifest.Version)"
+          Write-Host "Description: $($manifest.Description)"
