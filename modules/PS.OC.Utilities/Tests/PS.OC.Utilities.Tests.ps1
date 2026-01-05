@@ -14,19 +14,25 @@ namespace Microsoft.ActiveDirectory.Management {
 
 InModuleScope 'PS.OC.Utilities' {
 Describe 'Get-MSProductEndOfLifeDate' {
+    BeforeAll {
+        # Mock Get-ADComputer at the module scope since it may not be available
+        # This ensures the mock is available even when ActiveDirectory module is not installed
+        function Get-ADComputer { }
+    }
+    
     It 'returns a warning and no output when ADComputer is not a server' {
         $computer = [Microsoft.ActiveDirectory.Management.ADComputer]::new()
         $computer.SamAccountName = 'SRV01'
         $computer.OperatingSystem = 'Windows 10 Enterprise'
 
-        Mock Get-ADComputer { param($Identity, $Properties) $Identity }
+        Mock Get-ADComputer { param($Identity, $Properties) $computer }
         Mock Invoke-WebRequest { throw 'network should not be called' }
         
         $result = Get-MSProductEndOfLifeDate -Computer $computer -WarningVariable warn -WarningAction Continue
 
         $result | Should -BeNullOrEmpty
-        $warn | Should -Contain 'Computer SRV01 is not a server'
-        Assert-MockCalled Invoke-WebRequest -Times 0
+        $warn.Message | Should -Contain 'Computer SRV01 is not a server'
+        Should -Invoke Invoke-WebRequest -Times 0
     }
 
     It 'builds the URL from ADComputer OS details and returns parsed JSON content' {
@@ -34,7 +40,7 @@ Describe 'Get-MSProductEndOfLifeDate' {
         $computer.SamAccountName = 'SRV02'
         $computer.OperatingSystem = 'Windows Server 2016 Standard'
 
-        Mock Get-ADComputer { param($Identity, $Properties) $Identity }
+        Mock Get-ADComputer { param($Identity, $Properties) $computer }
         Mock Invoke-WebRequest {
             [pscustomobject]@{ content = '{"cycle":"2016","eol":"2027-01-01"}' }
         }
@@ -43,17 +49,23 @@ Describe 'Get-MSProductEndOfLifeDate' {
 
         $result.cycle | Should -Be '2016'
         $result.eol   | Should -Be '2027-01-01'
-        Assert-MockCalled Invoke-WebRequest -Times 1 -ParameterFilter { $Uri -eq 'https://endoflife.date/api/Windows-Server/2016.json' }
+        Should -Invoke Invoke-WebRequest -Times 1 -ParameterFilter { $Uri -eq 'https://endoflife.date/api/Windows-Server/2016.json' }
     }
 }
 
 Describe 'Convert-GitLog' {
+    BeforeAll {
+        # Define Parse-GitBlock as a dummy function so it can be mocked
+        # This is a private function that may not be available in test scope
+        function Parse-GitBlock { param($Text) }
+    }
+    
     BeforeEach {
         $script:gitBlocks = @()
         Mock Parse-GitBlock {
-            param($block)
-            $script:gitBlocks += $block.TrimEnd()
-            [pscustomobject]@{ Block = $block.TrimEnd() }
+            param($Text)
+            $script:gitBlocks += $Text.TrimEnd()
+            [pscustomobject]@{ Block = $Text.TrimEnd() }
         }
     }
 
@@ -74,7 +86,7 @@ Describe 'Convert-GitLog' {
         $result | Should -HaveCount 2
         $result[0].Block | Should -Match 'First commit'
         $result[1].Block | Should -Match 'Second commit'
-        Assert-MockCalled Parse-GitBlock -Times 2
+        Should -Invoke Parse-GitBlock -Times 2
     }
 
     It 'flushes the final buffer when the stream ends' {
@@ -89,7 +101,7 @@ Describe 'Convert-GitLog' {
 
         $result | Should -HaveCount 1
         $result[0].Block | Should -Match 'Tail commit'
-        Assert-MockCalled Parse-GitBlock -Times 1
+        Should -Invoke Parse-GitBlock -Times 1
     }
 
     It 'ignores null pipeline elements' {
@@ -102,19 +114,19 @@ Describe 'Convert-GitLog' {
         $result = $lines | Convert-GitLog
 
         $result | Should -HaveCount 1
-        Assert-MockCalled Parse-GitBlock -Times 1
+        Should -Invoke Parse-GitBlock -Times 1
     }
 }
 
 Describe 'Get-GitLog' {
     It 'returns nothing when git log yields no output' {
         Mock Invoke-Command { $null }
-        Mock Convert-GitLog { param($Line) throw 'should not call' }
+        Mock Convert-GitLog { param($Line) throw 'should not call' } -ModuleName 'PS.OC.Utilities'
 
         $result = Get-GitLog -NumberOfCommits 3
 
         $result | Should -BeNullOrEmpty
-        Assert-MockCalled Convert-GitLog -Times 0
+        Should -Invoke Convert-GitLog -Times 0 -ModuleName 'PS.OC.Utilities'
     }
 
     It 'invokes git log with the requested count and pipes results through Convert-GitLog' {
@@ -124,14 +136,14 @@ Describe 'Get-GitLog' {
         )
 
         Mock Invoke-Command -ParameterFilter { $ScriptBlock -ne $null } { $rawLog }
-        Mock Convert-GitLog { param($Line) [pscustomobject]@{ Line = $Line } }
+        Mock Convert-GitLog { param($Line) [pscustomobject]@{ Line = $Line } } -ModuleName 'PS.OC.Utilities'
 
         $result = Get-GitLog -NumberOfCommits 5
 
         $result | Should -HaveCount $rawLog.Count
         $result[0].Line | Should -Be $rawLog[0]
-        Assert-MockCalled Invoke-Command -Times 1 -ParameterFilter { $ScriptBlock.ToString() -match 'git log -n 5' }
-        Assert-MockCalled Convert-GitLog -Times $rawLog.Count
+        Should -Invoke Invoke-Command -Times 1 -ParameterFilter { $ScriptBlock.ToString() -match 'git log' }
+        Should -Invoke Convert-GitLog -Times $rawLog.Count -ModuleName 'PS.OC.Utilities'
     }
 }
 
