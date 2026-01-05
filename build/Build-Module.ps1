@@ -73,5 +73,22 @@ Write-Host "Copying module files..." -ForegroundColor Cyan
 Copy-Item -Path "$modulePath\*" -Destination $moduleOutputPath -Recurse -Force
 Write-Host "✓ Module files copied" -ForegroundColor Green
 
+# Generate documentation
+Write-Host "`nGenerating documentation..." -ForegroundColor Cyan
+$generateDocsScript = Join-Path $PSScriptRoot "Generate-Docs.ps1"
+if (Test-Path $generateDocsScript) {
+    try {
+        & $generateDocsScript -ModuleName $ModuleName -ModulePath $modulePath
+        Write-Host "✓ Documentation generated" -ForegroundColor Green
+    }
+    catch {
+        Write-Warning "Documentation generation failed: $_"
+        Write-Warning "Continuing with build..."
+    }
+}
+else {
+    Write-Warning "Generate-Docs.ps1 script not found at: $generateDocsScript"
+}
+
 Write-Host "`n✓ Build completed successfully!" -ForegroundColor Green
 Write-Host "Output location: $moduleOutputPath" -ForegroundColor Gray
