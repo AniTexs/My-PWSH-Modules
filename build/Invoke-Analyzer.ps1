@@ -35,6 +35,89 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Function to extract imported modules from PowerShell files
+function Get-ImportedModules {
+    param(
+        [string]$Path
+    )
+    
+    $importedModules = @{}
+    
+    # Get all PS files recursively
+    $psFiles = Get-ChildItem -Path $Path -Filter "*.ps1" -Recurse -ErrorAction SilentlyContinue
+    
+    foreach ($file in $psFiles) {
+        $content = Get-Content -Path $file.FullName -Raw -ErrorAction SilentlyContinue
+        if (-not $content) { continue }
+        
+        # Find Import-Module statements
+        $importMatches = [regex]::Matches($content, "Import-Module\s+(?:-Name\s+)?['\`"]?([a-zA-Z0-9._-]+)['\`"]?", "IgnoreCase")
+        foreach ($match in $importMatches) {
+            $moduleName = $match.Groups[1].Value
+            if ($moduleName -and $moduleName -notin $importedModules.Keys) {
+                $importedModules[$moduleName] = @{ File = $file.Name; Type = 'Import-Module' }
+            }
+        }
+        
+        # Find using module statements
+        $usingMatches = [regex]::Matches($content, "using\s+module\s+['\`"]?([a-zA-Z0-9._\\/:-]+)['\`"]?", "IgnoreCase")
+        foreach ($match in $usingMatches) {
+            $moduleName = Split-Path $match.Groups[1].Value -Leaf
+            if ($moduleName -and $moduleName -notin $importedModules.Keys) {
+                $importedModules[$moduleName] = @{ File = $file.Name; Type = 'using module' }
+            }
+        }
+        
+        # Find #Requires -Module statements
+        $requiresMatches = [regex]::Matches($content, "#Requires\s+-Module\s+([a-zA-Z0-9._-]+)", "IgnoreCase")
+        foreach ($match in $requiresMatches) {
+            $moduleName = $match.Groups[1].Value
+            if ($moduleName -and $moduleName -notin $importedModules.Keys) {
+                $importedModules[$moduleName] = @{ File = $file.Name; Type = '#Requires' }
+            }
+        }
+    }
+    
+    return $importedModules
+}
+
+# Function to detect cmdlet usage from modules
+function Get-CmdletUsage {
+    param(
+        [string]$Path,
+        [hashtable]$ImportedModules
+    )
+    
+    $usedModules = @{}
+    
+    # Get all PS files recursively
+    $psFiles = Get-ChildItem -Path $Path -Filter "*.ps1" -Recurse -ErrorAction SilentlyContinue
+    
+    foreach ($file in $psFiles) {
+        $content = Get-Content -Path $file.FullName -Raw -ErrorAction SilentlyContinue
+        if (-not $content) { continue }
+        
+        # Build a pattern of known module cmdlets
+        foreach ($moduleName in $ImportedModules.Keys) {
+            # Common cmdlet patterns: Verb-Noun format
+            # Look for cmdlet calls with module prefix or just cmdlet names
+            $pattern = "(?:^|\s)(?:\[?$([regex]::Escape($moduleName))\.)?\b([A-Z][a-z]+-[A-Z][a-zA-Z0-9]+)"
+            
+            $matches = [regex]::Matches($content, $pattern, "Multiline")
+            if ($matches.Count -gt 0) {
+                if ($moduleName -notin $usedModules) {
+                    $usedModules[$moduleName] = @{ File = $file.Name; UsageCount = $matches.Count }
+                }
+                else {
+                    $usedModules[$moduleName].UsageCount += $matches.Count
+                }
+            }
+        }
+    }
+    
+    return $usedModules
+}
+
 Write-Host "Running PSScriptAnalyzer..." -ForegroundColor Cyan
 
 # Check if PSScriptAnalyzer is available
@@ -74,6 +157,7 @@ foreach ($path in $paths) {
     $moduleName = Split-Path $path -Leaf
     Write-Host "`nAnalyzing: $moduleName" -ForegroundColor Gray
     
+    # Run PSScriptAnalyzer
     $results = Invoke-ScriptAnalyzer -Path $path -Recurse -Severity $Severity
     
     if ($results) {
@@ -96,7 +180,59 @@ foreach ($path in $paths) {
         }
     }
     else {
-        Write-Host "  ✓ No issues found" -ForegroundColor Green
+        Write-Host "  ✓ No script analysis issues found" -ForegroundColor Green
+    }
+    
+    # Analyze module dependencies
+    Write-Host "`n  Module Dependencies:" -ForegroundColor Cyan
+    $importedModules = Get-ImportedModules -Path $path
+    $usedModules = Get-CmdletUsage -Path $path -ImportedModules $importedModules
+    
+    if ($importedModules.Count -eq 0) {
+        Write-Host "    ℹ No modules imported" -ForegroundColor Gray
+    }
+    else {
+        Write-Host "    Imported modules:" -ForegroundColor Cyan
+        foreach ($modName in ($importedModules.Keys | Sort-Object)) {
+            $importInfo = $importedModules[$modName]
+            $isUsed = $modName -in $usedModules.Keys
+            $status = if ($isUsed) { "✓ Used" } else { "⚠ Unused" }
+            $statusColor = if ($isUsed) { "Green" } else { "Yellow" }
+            
+            Write-Host "      [$status] $modName" -ForegroundColor $statusColor
+            Write-Host "        Type: $($importInfo.Type), First found in: $($importInfo.File)" -ForegroundColor Gray
+        }
+    }
+    
+    # Check for potential missing imports (used but not imported)
+    Write-Host "`n    External cmdlets analysis:" -ForegroundColor Cyan
+    
+    $psFiles = Get-ChildItem -Path $path -Filter "*.ps1" -Recurse -ErrorAction SilentlyContinue
+    $commonCmdlets = @()
+    
+    foreach ($file in $psFiles) {
+        $content = Get-Content -Path $file.FullName -Raw -ErrorAction SilentlyContinue
+        if (-not $content) { continue }
+        
+        # Find all cmdlet-like calls (Verb-Noun pattern)
+        $cmdletMatches = [regex]::Matches($content, "\b([A-Z][a-z]+-[A-Z][a-zA-Z0-9]+)\b")
+        $commonCmdlets += $cmdletMatches | ForEach-Object { $_.Groups[1].Value }
+    }
+    
+    if ($commonCmdlets.Count -gt 0) {
+        $uniqueCmdlets = @($commonCmdlets | Sort-Object -Unique)
+        Write-Host "      Found $($uniqueCmdlets.Count) unique cmdlets across module files" -ForegroundColor Gray
+        
+        # Show summary
+        if ($usedModules.Count -eq 0 -and $importedModules.Count -gt 0) {
+            Write-Host "      ⚠ Warning: Modules imported but no usage detected" -ForegroundColor Yellow
+        }
+        elseif ($usedModules.Count -eq 0) {
+            Write-Host "      ℹ No external module usage detected" -ForegroundColor Gray
+        }
+        else {
+            Write-Host "      ✓ Using $($usedModules.Count) imported module(s)" -ForegroundColor Green
+        }
     }
 }
 
