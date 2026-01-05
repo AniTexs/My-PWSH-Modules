@@ -36,7 +36,7 @@ param(
     [string]$DocsPath = (Join-Path $PSScriptRoot ".." "docs" "Module Documentation")
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 Write-Host "Generating documentation for: $ModuleName" -ForegroundColor Cyan
 
@@ -62,13 +62,15 @@ if (-not $ModulePath) {
 }
 
 if (-not (Test-Path $ModulePath)) {
-    throw "Module path not found: $ModulePath"
+    Write-Error "Module path not found: $ModulePath"
+    exit 1
 }
 
 # Find module manifest
 $manifestPath = Join-Path $ModulePath "$ModuleName.psd1"
 if (-not (Test-Path $manifestPath)) {
-    throw "Module manifest not found: $manifestPath"
+    Write-Error "Module manifest not found: $manifestPath"
+    exit 1
 }
 
 Write-Host "✓ Module found at: $ModulePath" -ForegroundColor Green
@@ -82,7 +84,8 @@ try {
     Write-Host "✓ Module imported successfully (Version: $version)" -ForegroundColor Green
 }
 catch {
-    throw "Failed to import module: $_"
+    Write-Error "Failed to import module: $_"
+    exit 1
 }
 
 # Create output directory
@@ -181,3 +184,4 @@ catch {
 }
 
 Write-Host "`n✓ Documentation generation completed!" -ForegroundColor Green
+exit 0
