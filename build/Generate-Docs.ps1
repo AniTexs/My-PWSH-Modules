@@ -105,9 +105,10 @@ try {
         Write-Host "  Found $($commands.Count) command(s) to document" -ForegroundColor Gray
         
         # Generate markdown for all commands
-        New-MarkdownHelp -Module $ModuleName -OutputFolder $outputPath -Force -ErrorAction Stop
+        # Use ErrorAction Continue to generate what we can even if some commands fail
+        New-MarkdownHelp -Module $ModuleName -OutputFolder $outputPath -Force -ErrorAction Continue
         
-        Write-Host "✓ Documentation generated successfully" -ForegroundColor Green
+        Write-Host "✓ Documentation generation completed" -ForegroundColor Green
         Write-Host "  Location: $outputPath" -ForegroundColor Gray
         
         # List generated files
@@ -118,10 +119,22 @@ try {
                 Write-Host "    - $($file.Name)" -ForegroundColor Gray
             }
         }
+        else {
+            Write-Warning "No markdown files were generated"
+        }
     }
 }
 catch {
-    throw "Failed to generate documentation: $_"
+    Write-Warning "Non-critical error during documentation generation: $_"
+    
+    # Check if any files were generated despite the error
+    $mdFiles = Get-ChildItem -Path $outputPath -Filter "*.md" -ErrorAction SilentlyContinue
+    if ($mdFiles) {
+        Write-Host "✓ Partial documentation was generated ($($mdFiles.Count) file(s))" -ForegroundColor Green
+    }
+    else {
+        throw "Failed to generate documentation: $_"
+    }
 }
 
 # Commit documentation to git
