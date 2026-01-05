@@ -41,12 +41,20 @@ $ErrorActionPreference = 'Stop'
 Write-Host "Generating documentation for: $ModuleName" -ForegroundColor Cyan
 
 # Import PlatyPS module
-if (-not (Get-Module -ListAvailable -Name PlatyPS)) {
-    throw "PlatyPS module is not installed. Please run: Install-Module PlatyPS -Scope CurrentUser"
+try {
+    Import-Module PlatyPS -ErrorAction Stop
+    Write-Host "✓ PlatyPS module loaded" -ForegroundColor Green
 }
-
-Import-Module PlatyPS -ErrorAction Stop
-Write-Host "✓ PlatyPS module loaded" -ForegroundColor Green
+catch {
+    # Check if module is available
+    $platyPS = Get-Module -ListAvailable -Name PlatyPS
+    if (-not $platyPS) {
+        throw "PlatyPS module is not installed. Please run: Install-Module PlatyPS -Scope CurrentUser"
+    }
+    else {
+        throw "Failed to import PlatyPS module: $_"
+    }
+}
 
 # Determine module path
 if (-not $ModulePath) {
