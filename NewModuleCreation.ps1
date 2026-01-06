@@ -61,7 +61,7 @@ Foreach($import in @($Public + $Private))
 {
     Try
     {
-        Write-Host "Importing function $($import.fullname)"
+        Write-Verbose "Importing function $($import.fullname)"
         . $import.fullname
     }
     Catch

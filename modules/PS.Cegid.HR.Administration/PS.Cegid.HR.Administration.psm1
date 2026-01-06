@@ -1,3 +1,15 @@
+#Load classes first
+$ClassesPath = Join-Path $PSScriptRoot "Classes\Classes.ps1"
+if (Test-Path $ClassesPath) {
+    Try {
+        Write-Verbose "Loading classes from $ClassesPath"
+        . $ClassesPath
+    }
+    Catch {
+        Write-Error -Message "Failed to load classes: $_"
+    }
+}
+
 #Get public and private function definition files.
 $Private = @( Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -ErrorAction SilentlyContinue )
 $Public  = @( Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Recurse -ErrorAction SilentlyContinue )

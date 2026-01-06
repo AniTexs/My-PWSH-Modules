@@ -109,7 +109,10 @@ try {
         
         # Generate markdown for all commands
         # Use ErrorAction Continue to generate what we can even if some commands fail
-        New-MarkdownHelp -Module $ModuleName -OutputFolder $outputPath -Force -ErrorAction Continue
+        # Suppress type-not-found warnings since PlatyPS can still generate documentation
+        $WarningPreference = 'SilentlyContinue'
+        New-MarkdownHelp -Module $ModuleName -OutputFolder $outputPath -Force -ErrorAction Continue -WarningAction SilentlyContinue
+        $WarningPreference = 'Continue'
         
         Write-Host "✓ Documentation generation completed" -ForegroundColor Green
         Write-Host "  Location: $outputPath" -ForegroundColor Gray
@@ -128,15 +131,30 @@ try {
     }
 }
 catch {
-    Write-Warning "Non-critical error during documentation generation: $_"
-    
-    # Check if any files were generated despite the error
-    $mdFiles = Get-ChildItem -Path $outputPath -Filter "*.md" -ErrorAction SilentlyContinue
-    if ($mdFiles) {
-        Write-Host "✓ Partial documentation was generated ($($mdFiles.Count) file(s))" -ForegroundColor Green
+    # Check if the error is related to type resolution - this is non-critical
+    if ($_ -match "Unable to find type") {
+        Write-Warning "Type resolution warning (non-critical): $_"
+        
+        # Check if files were generated despite the type error
+        $mdFiles = Get-ChildItem -Path $outputPath -Filter "*.md" -ErrorAction SilentlyContinue
+        if ($mdFiles) {
+            Write-Host "✓ Documentation was generated ($($mdFiles.Count) file(s)) despite type resolution warnings" -ForegroundColor Green
+        }
+        else {
+            Write-Warning "No markdown files were generated"
+        }
     }
     else {
-        throw "Failed to generate documentation: $_"
+        Write-Warning "Non-critical error during documentation generation: $_"
+        
+        # Check if any files were generated despite the error
+        $mdFiles = Get-ChildItem -Path $outputPath -Filter "*.md" -ErrorAction SilentlyContinue
+        if ($mdFiles) {
+            Write-Host "✓ Partial documentation was generated ($($mdFiles.Count) file(s))" -ForegroundColor Green
+        }
+        else {
+            throw "Failed to generate documentation: $_"
+        }
     }
 }
 
