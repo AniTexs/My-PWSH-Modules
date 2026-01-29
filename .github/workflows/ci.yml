@@ -51,13 +51,12 @@ jobs:
         shell: pwsh
         run: |
           $modulePath = (Resolve-Path "./modules").Path
-          Write-Host "Adding $modulePath to PSModulePath"
+          Write-Host "Adding module path: $modulePath"
 
-          if ($IsWindows) {
-            "$modulePath;$env:PSModulePath" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "$modulePath:$env:PSModulePath" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
+          $sep = [IO.Path]::PathSeparator   # ';' on Windows, ':' on Linux/macOS
+          $new = "${modulePath}${sep}${env:PSModulePath}"
+
+          "PSModulePath=$new" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Discover modules
         id: discover
