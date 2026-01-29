@@ -1,6 +1,11 @@
 # My-PWSH-Modules
 
+I humbly welcome you to my little repo here :p
+
 Collection of PowerShell modules maintained in a single repository with automated build, test, and publish workflows.
+
+> And yes, the markdown files are mostly AI Written, mainly because I suck at explaining stuff.
+> I do use Copilot but for line completion and complex logic help :) nothing in this repository is built only by AI.
 
 ## 📋 Overview
 
@@ -12,8 +17,13 @@ Here you can view the Modules which currently exist in this Repository.
 
 |Module Name|Description|Link|
 |-|-|-|
-|PS.Capa.CapaOne|Unofficial API Wrapper for CapaSystems CapaOne |[PS.Capa.CapaOne](./modules/PS.Capa.CapaOne/)|
+|PS.Capa.CapaOne|Unofficial API Wrapper for CapaSystems CapaOne|[PS.Capa.CapaOne](./modules/PS.Capa.CapaOne/)|
 |PS.ElasticShell|API Wrapper for interacting with ElasticSearch|[PS.ElasticShell](./modules/PS.ElasticShell/)|
+|PS.OC.Utilities|A module containing generic simple helper functions.|[PS.OC.Utilities](./modules/PS.OC.Utilities/)|
+|PS.PasswordState|Module to interact with PasswordState and works with SecretManagement to create vaults.|[PS.PasswordState](./modules/PS.PasswordState/)|
+|PS.ModelContextProtocol||[PS.ModelContextProtocol](./modules/PS.ModelContextProtocol/)|
+|PS.ModelContextProtocol.Example|A refernece module on how to create additional MCP Tools.|[PS.ModelContextProtocol.Example](./modules/PS.ModelContextProtocol/)|
+|PS.ModelContextProtocol.Generic|Generic MCP Tools.|[PS.ModelContextProtocol.Generic](./modules/PS.ModelContextProtocol/)|
 
 To see all modules, check the [modules](./modules) directory.
 
