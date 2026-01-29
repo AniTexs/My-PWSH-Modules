@@ -51,7 +51,7 @@
     # ProcessorArchitecture = ''
 
     # Modules that must be imported into the global environment prior to importing this module
-    RequiredModules      = @('Microsoft.PowerShell.Utility')
+    # RequiredModules      = @('Microsoft.PowerShell.Utility')
 
     # Assemblies that must be loaded prior to importing this module
     # RequiredAssemblies = @()
@@ -125,7 +125,7 @@
             # RequireLicenseAcceptance = $false
 
             # External dependent modules of this module
-            # ExternalModuleDependencies = @()
+            ExternalModuleDependencies = @("Microsoft.PowerShell.Utility")
 
             DefaultCommandPrefix = 'PasswordState'
 
