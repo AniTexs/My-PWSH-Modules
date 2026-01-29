@@ -47,7 +47,7 @@ jobs:
           }
           Write-Host "✓ Dependencies installed"
 
-            - name: Add repo modules to PSModulePath
+      - name: Add repo modules to PSModulePath
         shell: pwsh
         run: |
           $modulePath = (Resolve-Path "./modules").Path
