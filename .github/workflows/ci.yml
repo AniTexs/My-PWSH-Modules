@@ -16,7 +16,7 @@ jobs:
     name: Build and Test Modules
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: read
+      contents: write
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup PowerShell
         shell: pwsh
@@ -122,3 +124,30 @@ jobs:
           name: built-modules
           path: output/
           retention-days: 7
+
+      - name: Commit generated module docs
+        if: github.event_name == 'push' && matrix.os == 'ubuntu-latest' && steps.discover.outputs.has_modules == 'true'
+        shell: pwsh
+        run: |
+          $docsPath = "docs/Module Documentation"
+
+          if (-not (Test-Path $docsPath)) {
+            Write-Host "Docs path not found: $docsPath"
+            exit 0
+          }
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage only docs changes
+          git add "$docsPath"
+
+          # If nothing changed, do nothing
+          $status = git status --porcelain
+          if (-not $status) {
+            Write-Host "No doc changes to commit."
+            exit 0
+          }
+
+          git commit -m "docs: update module documentation [skip ci]"
+          git push
