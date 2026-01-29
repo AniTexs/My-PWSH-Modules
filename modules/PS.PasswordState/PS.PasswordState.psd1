@@ -33,7 +33,7 @@
     Description          = 'Work with PasswordStates API and integrate it with SecretManagement in PWSH 7'
 
     # Minimum version of the PowerShell engine required by this module
-    # PowerShellVersion = ''
+    PowerShellVersion = '7.0'
 
     # Name of the PowerShell host required by this module
     # PowerShellHostName = ''
