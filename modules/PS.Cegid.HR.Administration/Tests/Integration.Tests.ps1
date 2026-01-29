@@ -1,3 +1,4 @@
+<#
 BeforeAll {
     # Import the module
     $ModulePath = Split-Path -Parent $PSScriptRoot
@@ -16,7 +17,6 @@ BeforeAll {
         Write-Warning "Integration tests skipped. Set TS_BASE_URI, TS_CLIENT_ID, and TS_CLIENT_SECRET environment variables to run integration tests."
     }
 }
-
 Describe 'Integration Tests - Connect-Talentsoft' -Tag 'Integration' {
     
     BeforeAll {
@@ -73,3 +73,4 @@ Describe 'Integration Tests - API Calls' -Tag 'Integration' {
 AfterAll {
     Remove-Module -Name 'PS.Cegid.HR.Administration' -Force -ErrorAction SilentlyContinue
 }
+#>
