@@ -47,6 +47,18 @@ jobs:
           }
           Write-Host "✓ Dependencies installed"
 
+            - name: Add repo modules to PSModulePath
+        shell: pwsh
+        run: |
+          $modulePath = (Resolve-Path "./modules").Path
+          Write-Host "Adding $modulePath to PSModulePath"
+
+          if ($IsWindows) {
+            "$modulePath;$env:PSModulePath" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            "$modulePath:$env:PSModulePath" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+
       - name: Discover modules
         id: discover
         shell: pwsh
