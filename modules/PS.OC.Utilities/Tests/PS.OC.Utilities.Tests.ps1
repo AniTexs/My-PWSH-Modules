@@ -147,4 +147,24 @@ Describe 'Get-GitLog' {
     }
 }
 
+Describe 'Complex Matching' {
+    It 'Can Create new Match Groups' {
+        $group = New-OCMatchGroup -Name 'Test Group' -Metadata @{ Author='Tester' }
+        $group.Name | Should -Be 'Test Group'
+        $group.Metadata.Author | Should -Be 'Tester'
+        $group.Criteria | Should -BeEmpty
+    }
+    It 'Can Create new Match Criteria and add to Match Group' {
+        $criteria1 = New-OCMatchCriteria -Criteria { param($item) $item -eq 'A' }
+        $criteria2 = New-OCMatchCriteria -Criteria { param($item) $item -eq 'B' }
+
+        $group = New-OCMatchGroup -Name 'Test Group' -Criteria @($criteria1, $criteria2)
+        $group.Criteria.Count | Should -Be 2
+
+        $group2 = New-OCMatchGroup -Name 'Another Group'
+        $group2 = $criteria1 | New-OCMatchCriteria -InputObject $group2
+        $group2.Criteria.Count | Should -Be 1
+    }
+}
+
 }

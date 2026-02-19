@@ -12,7 +12,7 @@
 RootModule = 'PS.OC.Utilities.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.1'
+ModuleVersion = '1.1.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -21,7 +21,7 @@ ModuleVersion = '1.0.1'
 GUID = '6732fbfa-96d2-488e-a51a-ed440286f7a0'
 
 # Author of this module
-Author = 'Nicolai Estrup Jacobsen'
+Author = 'Nicolai Jacobsen'
 
 # Company or vendor of this module
 CompanyName = 'Individual'
@@ -69,7 +69,28 @@ Description = 'Collection of Scripts and Functions which does not require their 
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = '*'
+FunctionsToExport = @(
+    # Sort & Filter
+    "Find-OCMatch"
+    "New-OCMatchCriteria"
+    "New-OCMatchGroup"
+
+    # Module Functions
+    "Install-ModuleToDirectory"
+
+    # Git
+    "Get-GitLog"
+    "Convert-GitLog"
+
+    # Generic
+    "Get-MSProductEndOfLifeDate"
+
+    # Authentication
+    "Test-Authentication"
+    "Get-LocalPasswordPolicy"
+    "Test-LocalPasswordComplexity"
+    "Test-PasswordComplexity"
+)
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -95,19 +116,28 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        # Tags = @()
+        Tags = @('utilities','helper','git','activedirectory')
 
         # A URL to the license for this module.
-        # LicenseUri = ''
+        LicenseUri = 'https://github.com/AniTexs/My-PWSH-Modules/blob/main/LICENSE'
 
         # A URL to the main website for this project.
-        # ProjectUri = ''
+        ProjectUri = 'https://github.com/AniTexs/My-PWSH-Modules'
 
         # A URL to an icon representing this module.
         # IconUri = ''
 
         # ReleaseNotes of this module
-        # ReleaseNotes = ''
+        ReleaseNotes = @'
+Added Cmdlets:
+- Find-OCMatch
+- New-OCMatchCriteria
+- New-OCMatchGroup
+- Test-Authentication
+- Get-LocalPasswordPolicy
+- Test-LocalPasswordComplexity
+- Test-PasswordComplexity
+'@
 
         # Prerelease string of this module
         # Prerelease = ''
@@ -123,7 +153,7 @@ PrivateData = @{
 } # End of PrivateData hashtable
 
 # HelpInfo URI of this module
-# HelpInfoURI = ''
+HelpInfoURI = 'https://github.com/AniTexs/My-PWSH-Modules/tree/main/docs/Module%20Documentation/PS.OC.Utilities/'
 
 # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
 # DefaultCommandPrefix = ''
