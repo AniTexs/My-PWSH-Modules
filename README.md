@@ -24,6 +24,7 @@ Here you can view the Modules which currently exist in this Repository.
 |PS.ModelContextProtocol||[PS.ModelContextProtocol](./modules/PS.ModelContextProtocol/)|
 |PS.ModelContextProtocol.Example|A refernece module on how to create additional MCP Tools.|[PS.ModelContextProtocol.Example](./modules/PS.ModelContextProtocol/)|
 |PS.ModelContextProtocol.Generic|Generic MCP Tools.|[PS.ModelContextProtocol.Generic](./modules/PS.ModelContextProtocol/)|
+|PS.AdaptiveCard|Adaptive Card creation from Powershell|[PS.AdaptiveCard](./modules/PS.AdaptiveCard/)|
 
 To see all modules, check the [modules](./modules) directory.
 
