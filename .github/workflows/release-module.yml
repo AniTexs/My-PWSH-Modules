@@ -129,7 +129,7 @@ jobs:
           git tag "${TAG}"
           git push origin "${TAG}"
 
-      - name: Create release via API (prevents 'untagged-*' drafts)
+      - name: Create release via API (proper boolean fields)
         id: create_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,22 +138,27 @@ jobs:
           set -euo pipefail
 
           TAG="${{ steps.meta.outputs.tag }}"
-          NAME="${TAG}"
-          DRAFT="${{ inputs.draft }}"
-          PRERELEASE="${{ inputs.prerelease }}"
+          MOD="${{ steps.meta.outputs.module_name }}"
+          VER="${{ steps.meta.outputs.version }}"
+
+          # GitHub Actions inputs are strings "true"/"false" in bash
+          if [[ "${{ inputs.draft }}" == "true" ]]; then DRAFT=true; else DRAFT=false; fi
+          if [[ "${{ inputs.prerelease }}" == "true" ]]; then PRERELEASE=true; else PRERELEASE=false; fi
 
           echo "Creating release: tag=$TAG draft=$DRAFT prerelease=$PRERELEASE"
 
-          # Create release (forces tag_name to be set)
-          gh api -X POST "repos/${GITHUB_REPOSITORY}/releases" \
-            -f tag_name="$TAG" \
-            -f name="$NAME" \
-            -f draft="$DRAFT" \
-            -f prerelease="$PRERELEASE" \
-            -f generate_release_notes=false \
-            -f body="Automated release for ${{ steps.meta.outputs.module_name }} v${{ steps.meta.outputs.version }}." \
-            > release.json
+          cat > payload.json <<EOF
+          {
+            "tag_name": "${TAG}",
+            "name": "${TAG}",
+            "draft": ${DRAFT},
+            "prerelease": ${PRERELEASE},
+            "generate_release_notes": false,
+            "body": "Automated release for ${MOD} v${VER}."
+          }
+          EOF
 
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/releases" --input payload.json > release.json
           RELEASE_ID="$(jq -r '.id' release.json)"
           echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
           echo "Created release id: $RELEASE_ID"
@@ -168,7 +173,7 @@ jobs:
           FILE="${{ steps.pack.outputs.asset_path }}"
           gh release upload "${TAG}" "${FILE}" --clobber
 
-      - name: Delete all other release assets (keep only module zip)
+      - name: Delete all other uploaded release assets (keep only module zip)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -181,8 +186,7 @@ jobs:
 
           release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}")"
 
-          # Delete all uploaded assets except KEEP.
-          # Note: this cannot remove GitHub's built-in "Source code (zip/tar.gz)" entries.
+          # Deletes *uploaded* assets only. GitHub's built-in "Source code" entries remain.
           echo "$release_json" \
             | jq -r --arg KEEP "$KEEP" '.assets[] | select(.name != $KEEP) | .id' \
             | while read -r asset_id; do
