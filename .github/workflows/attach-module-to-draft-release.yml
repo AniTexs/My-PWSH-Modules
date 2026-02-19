@@ -1,0 +1,86 @@
+name: Attach module zip to draft release
+
+on:
+  release:
+    types: [created]   # fires when a release is created (including drafts)
+
+permissions:
+  contents: write      # required to upload release assets
+
+jobs:
+  attach:
+    runs-on: windows-latest   # safest for PowerShell build scripts
+    steps:
+      - name: Read release metadata
+        id: meta
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $tag = "${{ github.event.release.tag_name }}"
+          if (-not $tag) { throw "No tag_name in release event payload" }
+
+          # Expect: PS.OC.Utilities-v1.1.0
+          if ($tag -notmatch '^(?<module>.+)-v(?<version>\d+\.\d+\.\d+(?:[-+].*)?)$') {
+            throw "Tag '$tag' doesn't match expected format: ModuleName-v1.2.3"
+          }
+
+          $moduleName = $Matches.module
+          $version    = $Matches.version
+
+          "tag=$tag"               | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "module_name=$moduleName"| Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "version=$version"       | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Tag:    $tag"
+          Write-Host "Module: $moduleName"
+          Write-Host "Ver:    $version"
+
+      - name: Checkout the tag (IMPORTANT)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.meta.outputs.tag }}
+
+      - name: Build module
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          ./build/Build-Module.ps1 -ModuleName "${{ steps.meta.outputs.module_name }}"
+
+      - name: Package only this module output
+        id: pack
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $moduleName = "${{ steps.meta.outputs.module_name }}"
+          $version    = "${{ steps.meta.outputs.version }}"
+
+          $outDir = Join-Path "." "output\$moduleName"
+          if (-not (Test-Path $outDir)) {
+            Write-Host "Directory listing of ./output:"
+            if (Test-Path ./output) { Get-ChildItem ./output -Force | Format-Table -AutoSize | Out-String | Write-Host }
+            throw "Expected build output not found: $outDir"
+          }
+
+          $zipName = "$moduleName-v$version.zip"
+          $zipPath = Join-Path $PWD $zipName
+
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          Compress-Archive -Path (Join-Path $outDir "*") -DestinationPath $zipPath -Force
+
+          "asset_path=$zipPath" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "asset_name=$zipName" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Created: $zipPath"
+
+      - name: Upload asset to THIS release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.meta.outputs.tag }}"
+          FILE="${{ steps.pack.outputs.asset_path }}"
+          gh release upload "${TAG}" "${FILE}" --clobber
