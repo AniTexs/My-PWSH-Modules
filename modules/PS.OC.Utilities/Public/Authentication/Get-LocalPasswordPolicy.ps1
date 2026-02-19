@@ -165,15 +165,3 @@ function Get-LocalPasswordPolicy {
         Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
     }
 }
-
-# Execute the function and store the result
-$pol = Get-LocalPasswordPolicy
-
-# Check if the retrieval was successful
-if (-not $pol.Success) {
-    Write-Warning "$($pol.Error) $($pol.Hint)"
-    return
-}
-
-# Output the minimum password length setting
-$pol.MinimumPasswordLength
