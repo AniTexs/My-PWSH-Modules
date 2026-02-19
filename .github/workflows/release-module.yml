@@ -1,0 +1,140 @@
+name: Release PowerShell Module (tag + release + asset)
+
+on:
+  workflow_dispatch:
+    inputs:
+      module_name:
+        description: "Module folder/name under ./modules (e.g. PS.OC.Utilities)"
+        required: true
+        type: string
+      draft:
+        description: "Create as draft release"
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: "Mark as prerelease"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve module + version + tag
+        id: meta
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $moduleName = "${{ inputs.module_name }}".Trim()
+          if (-not $moduleName) { throw "module_name is required" }
+
+          $moduleDir = Join-Path "." "modules/$moduleName"
+          if (-not (Test-Path $moduleDir)) { throw "Module directory not found: $moduleDir" }
+
+          $manifestPath = Join-Path $moduleDir "$moduleName.psd1"
+          if (-not (Test-Path $manifestPath)) { throw "Manifest not found: $manifestPath" }
+
+          $m = Test-ModuleManifest -Path $manifestPath
+          $version = "$($m.Version)"
+          if (-not $version) { throw "Could not read ModuleVersion from manifest: $manifestPath" }
+
+          $tag = "$moduleName-v$version"
+
+          "module_name=$moduleName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "version=$version"        | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=$tag"                | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Module:  $moduleName"
+          Write-Host "Version: $version"
+          Write-Host "Tag:     $tag"
+
+      - name: Fail if tag already exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.meta.outputs.tag }}"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag already exists: ${TAG}"
+            exit 1
+          fi
+
+      - name: Install PowerShell build dependencies (if your build scripts need them)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          foreach ($name in "Pester","PSScriptAnalyzer","PlatyPS") {
+            if (-not (Get-Module -ListAvailable -Name $name)) {
+              Install-Module -Name $name -Force -SkipPublisherCheck -Scope CurrentUser
+            }
+          }
+
+      - name: Build ONLY the selected module
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          ./build/Build-Module.ps1 -ModuleName "${{ steps.meta.outputs.module_name }}"
+
+      - name: Create zip asset from build output (ONLY this module)
+        id: pack
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $moduleName = "${{ steps.meta.outputs.module_name }}"
+          $version    = "${{ steps.meta.outputs.version }}"
+
+          $outDir = Join-Path "." "output/$moduleName"
+          if (-not (Test-Path $outDir)) { throw "Expected build output not found: $outDir" }
+
+          $zipName = "$moduleName-v$version.zip"
+          $zipPath = Join-Path $PWD $zipName
+
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+
+          Compress-Archive -Path (Join-Path $outDir "*") -DestinationPath $zipPath -Force
+
+          "asset_path=$zipPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "asset_name=$zipName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Created asset: $zipPath"
+
+      - name: Create and push tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          TAG="${{ steps.meta.outputs.tag }}"
+          git tag "${TAG}"
+          git push origin "${TAG}"
+
+      - name: Create GitHub Release and upload ONLY the module zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG="${{ steps.meta.outputs.tag }}"
+          ASSET="${{ steps.pack.outputs.asset_path }}"
+
+          args=(release create "${TAG}" "${ASSET}"
+                --title "${TAG}"
+                --notes "Automated release for ${{ steps.meta.outputs.module_name }} v${{ steps.meta.outputs.version }}.")
+
+          if [[ "${{ inputs.draft }}" == "true" ]]; then args+=(--draft); fi
+          if [[ "${{ inputs.prerelease }}" == "true" ]]; then args+=(--prerelease); fi
+
+          gh "${args[@]}"
