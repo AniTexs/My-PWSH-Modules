@@ -5,10 +5,14 @@ on:
     branches:
       - main
       - develop
+    paths:
+      - "modules/**"
   pull_request:
     branches:
       - main
       - develop
+    paths:
+      - "modules/**"
   workflow_dispatch:
 
 jobs:
@@ -65,25 +69,55 @@ jobs:
         run: |
           $env:PSModulePath -split [IO.Path]::PathSeparator | Select-Object -First 10 | ForEach-Object { " - $_" }
 
-      - name: Discover modules
+      - name: Discover changed modules
         id: discover
         shell: pwsh
         run: |
-          $modulesPath = "./modules"
-          if (Test-Path $modulesPath) {
-            $modules = Get-ChildItem -Path $modulesPath -Directory | Select-Object -ExpandProperty Name
-            if ($modules) {
-              Write-Host "Found modules: $($modules -join ', ')"
-              echo "has_modules=true" >> $env:GITHUB_OUTPUT
-              echo "modules=$($modules -join ',')" >> $env:GITHUB_OUTPUT
-            } else {
-              Write-Host "No modules found"
-              echo "has_modules=false" >> $env:GITHUB_OUTPUT
-            }
+          $ErrorActionPreference = "Stop"
+
+          # Determine diff base/head depending on event type
+          if ("${{ github.event_name }}" -eq "pull_request") {
+            $base = "${{ github.event.pull_request.base.sha }}"
+            $head = "${{ github.event.pull_request.head.sha }}"
           } else {
-            Write-Host "Modules directory does not exist yet"
-            echo "has_modules=false" >> $env:GITHUB_OUTPUT
+            # push event
+            $base = "${{ github.event.before }}"
+            $head = "${{ github.sha }}"
           }
+
+          if (-not $base -or $base -eq "0000000000000000000000000000000000000000") {
+            # Edge case: first push on a new branch or history rewrite
+            $base = "HEAD~1"
+          }
+
+          Write-Host "Diff base: $base"
+          Write-Host "Diff head: $head"
+
+          $changedFiles = git diff --name-only $base $head -- "modules/"
+          if (-not $changedFiles) {
+            Write-Host "No changes under modules/"
+            "has_modules=false" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+            exit 0
+          }
+
+          # Extract module folder names: modules/<ModuleName>/...
+          $modules = $changedFiles |
+            ForEach-Object {
+              if ($_ -match '^modules/([^/]+)/') { $Matches[1] }
+            } |
+            Where-Object { $_ } |
+            Sort-Object -Unique
+
+          if (-not $modules) {
+            Write-Host "Changes detected under modules/ but no module folder could be parsed."
+            "has_modules=false" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+            exit 0
+          }
+
+          Write-Host "Changed modules: $($modules -join ', ')"
+          "has_modules=true" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "modules=$($modules -join ',')" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+
 
       - name: Run PSScriptAnalyzer
         if: steps.discover.outputs.has_modules == 'true'
