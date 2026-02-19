@@ -120,7 +120,7 @@ jobs:
           git tag "${TAG}"
           git push origin "${TAG}"
 
-      - name: Create GitHub Release and upload ONLY the module zip
+      - name: Create or update GitHub Release and upload module zip
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -130,11 +130,16 @@ jobs:
           TAG="${{ steps.meta.outputs.tag }}"
           ASSET="${{ steps.pack.outputs.asset_path }}"
 
-          args=(release create "${TAG}" "${ASSET}"
-                --title "${TAG}"
-                --notes "Automated release for ${{ steps.meta.outputs.module_name }} v${{ steps.meta.outputs.version }}.")
+          # Build common flags
+          flags=(--title "${TAG}" --notes "Automated release for ${{ steps.meta.outputs.module_name }} v${{ steps.meta.outputs.version }}.")
+          if [[ "${{ inputs.draft }}" == "true" ]]; then flags+=(--draft); fi
+          if [[ "${{ inputs.prerelease }}" == "true" ]]; then flags+=(--prerelease); fi
 
-          if [[ "${{ inputs.draft }}" == "true" ]]; then args+=(--draft); fi
-          if [[ "${{ inputs.prerelease }}" == "true" ]]; then args+=(--prerelease); fi
-
-          gh "${args[@]}"
+          # If release already exists (draft or published), just upload/replace the asset
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Release already exists for ${TAG} -> uploading asset (clobber)"
+            gh release upload "${TAG}" "${ASSET}" --clobber
+          else
+            echo "Release does not exist for ${TAG} -> creating release and attaching asset"
+            gh release create "${TAG}" "${ASSET}" "${flags[@]}"
+          fi
