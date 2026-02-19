@@ -11,7 +11,7 @@ on:
         description: "Create as draft release"
         required: false
         type: boolean
-        default: false
+        default: true
       prerelease:
         description: "Mark as prerelease"
         required: false
@@ -59,6 +59,15 @@ jobs:
           Write-Host "Version: $version"
           Write-Host "Tag:     $tag"
 
+      - name: Guard: tag must be valid
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.meta.outputs.tag }}"
+          echo "TAG='$TAG'"
+          [[ -n "$TAG" ]] || { echo "TAG is empty"; exit 1; }
+          [[ "$TAG" =~ ^.+-v[0-9]+\.[0-9]+\.[0-9]+.*$ ]] || { echo "TAG is not ModuleName-vX.Y.Z: $TAG"; exit 1; }
+
       - name: Fail if tag already exists
         shell: bash
         run: |
@@ -69,7 +78,7 @@ jobs:
             exit 1
           fi
 
-      - name: Install PowerShell build dependencies (if your build scripts need them)
+      - name: Install PowerShell build dependencies
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -120,7 +129,8 @@ jobs:
           git tag "${TAG}"
           git push origin "${TAG}"
 
-      - name: Create or update GitHub Release (upload module zip)
+      - name: Create release via API (prevents 'untagged-*' drafts)
+        id: create_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -128,19 +138,54 @@ jobs:
           set -euo pipefail
 
           TAG="${{ steps.meta.outputs.tag }}"
-          ASSET="${{ steps.pack.outputs.asset_path }}"
+          NAME="${TAG}"
+          DRAFT="${{ inputs.draft }}"
+          PRERELEASE="${{ inputs.prerelease }}"
 
-          if gh release view "${TAG}" >/dev/null 2>&1; then
-            echo "Release exists (${TAG}) - uploading asset"
-            gh release upload "${TAG}" "${ASSET}" --clobber
-          else
-            echo "Release does not exist (${TAG}) - creating release with asset"
-            args=(release create "${TAG}" "${ASSET}"
-                  --title "${TAG}"
-                  --notes "Automated release for ${{ steps.meta.outputs.module_name }} v${{ steps.meta.outputs.version }}.")
+          echo "Creating release: tag=$TAG draft=$DRAFT prerelease=$PRERELEASE"
 
-            if [[ "${{ inputs.draft }}" == "true" ]]; then args+=(--draft); fi
-            if [[ "${{ inputs.prerelease }}" == "true" ]]; then args+=(--prerelease); fi
+          # Create release (forces tag_name to be set)
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/releases" \
+            -f tag_name="$TAG" \
+            -f name="$NAME" \
+            -f draft="$DRAFT" \
+            -f prerelease="$PRERELEASE" \
+            -f generate_release_notes=false \
+            -f body="Automated release for ${{ steps.meta.outputs.module_name }} v${{ steps.meta.outputs.version }}." \
+            > release.json
 
-            gh "${args[@]}"
-          fi
+          RELEASE_ID="$(jq -r '.id' release.json)"
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+          echo "Created release id: $RELEASE_ID"
+
+      - name: Upload module zip to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.meta.outputs.tag }}"
+          FILE="${{ steps.pack.outputs.asset_path }}"
+          gh release upload "${TAG}" "${FILE}" --clobber
+
+      - name: Delete all other release assets (keep only module zip)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.meta.outputs.tag }}"
+          KEEP="${{ steps.pack.outputs.asset_name }}"
+
+          echo "Keeping asset: $KEEP"
+
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}")"
+
+          # Delete all uploaded assets except KEEP.
+          # Note: this cannot remove GitHub's built-in "Source code (zip/tar.gz)" entries.
+          echo "$release_json" \
+            | jq -r --arg KEEP "$KEEP" '.assets[] | select(.name != $KEEP) | .id' \
+            | while read -r asset_id; do
+                echo "Deleting asset id: $asset_id"
+                gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
+              done
