@@ -1,4 +1,4 @@
-name: Release PowerShell Module (tag + release + asset)
+name: Create Release PowerShell Module
 
 on:
   workflow_dispatch:
@@ -59,7 +59,7 @@ jobs:
           Write-Host "Version: $version"
           Write-Host "Tag:     $tag"
 
-      - name: Guard: tag must be valid
+      - name: Tag must be valid
         shell: bash
         run: |
           set -euo pipefail
