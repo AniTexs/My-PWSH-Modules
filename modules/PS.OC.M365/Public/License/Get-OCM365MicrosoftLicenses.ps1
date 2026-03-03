@@ -38,10 +38,13 @@ function Get-OCM365MicrosoftLicenses {
     #>
     [CmdletBinding()]
     param (
+        [string]
         $DisplayName,
-        [Parameter(ValueFromPipelineByPropertyName)]
+        [Parameter(ValueFromPipelineByPropertyName,ValueFromPipeline)]
+        [string]
         $SkuPartNumber,
         [Parameter(ValueFromPipelineByPropertyName)]
+        [string]
         $SkuId,
         [ValidateSet('Commerical', 'Goverment', 'Education', 'Nonprofit')]
         [String]
@@ -127,3 +130,4 @@ function Get-OCM365MicrosoftLicenses {
     }
     
 }
+Export-ModuleMember -Alias "Get-OCM365FriendlyLicenseName" -Function Get-OCM365MicrosoftLicenses
