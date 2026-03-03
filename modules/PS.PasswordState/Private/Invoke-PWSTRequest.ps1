@@ -8,10 +8,13 @@ function Invoke-PWSTRequest {
         [System.Management.Automation.PSCmdlet]
         $Cmdlet, 
         [Parameter(ValueFromPipeline = $true, ParameterSetName = 'Hashtable')]
+        [Parameter(ValueFromPipeline = $true, ParameterSetName="File",Mandatory)]
         [Hashtable]
         $Query = @{},
         [hashtable]$Body = $null,
-        [hashtable]$Context
+        [hashtable]$Context,
+        [Parameter(ParameterSetName="File")]
+        [System.IO.FileInfo]$File
     )
     if (-not $PSBoundParameters.ContainsKey('Verbose')) {
         $VerbosePreference = $PSCmdlet.GetVariableValue('VerbosePreference')
@@ -26,12 +29,18 @@ function Invoke-PWSTRequest {
         'Hashtable' {
             Write-Verbose "PWSTREQUEST:: Building query from hashtable."
             if (-not $Query) { $Query = @{} }
-            $Uri = Build-PWSTUri -BaseUrl $ctx.BaseUrl -Endpoint $Path -Query $Query -Context $ctx #-Verbose:$PSBoundParameters.Verbose
+            $Uri = Build-PWSTUri -BaseUrl $ctx.BaseUrl -Endpoint $Path -Query $Query -Context $ctx -Verbose:$PSBoundParameters.Verbose
         }
         'PSCmdlet' {
             Write-Verbose "PWSTREQUEST:: Building query from Cmdlet parameters."
             $Query = Build-QueryFromParams -Cmdlet $Cmdlet
-            $Uri = Build-PWSTUri -BaseUrl $ctx.BaseUrl -Endpoint ($Path+$Query) -Context $ctx #-Verbose:$PSBoundParameters.Verbose
+            $Uri = Build-PWSTUri -BaseUrl $ctx.BaseUrl -Endpoint ($Path+$Query) -Context $ctx -Verbose:$PSBoundParameters.Verbose
+        }
+        'File' {
+            Write-Verbose "PWSTREQUEST:: Building query from file."
+            if (-not $File) { throw "File parameter is required for File parameter set." }
+            if (-not $Query) { $Query = @{} }
+            $Uri = Build-PWSTUri -BaseUrl $ctx.BaseUrl -Endpoint $Path -Context $ctx -Query $Query -Verbose:$PSBoundParameters.Verbose
         }
     }
     
@@ -42,6 +51,11 @@ function Invoke-PWSTRequest {
         ConnectionTimeoutSeconds = ($ctx.TimeoutSec)
         SkipCertificateCheck = (-not $ctx.VerifySsl)
         Header = @{ "APIKey" = $ctx.ApiKey }
+    }
+
+    if ($File) {
+        $Params.InFile = $File.FullName
+        $Params.ContentType = 'multipart/form-data'
     }
 
     if ($Body) {

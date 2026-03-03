@@ -12,7 +12,7 @@
     RootModule           = 'PS.PasswordState.psm1'
 
     # Version number of this module.
-    ModuleVersion        = '0.4.3'
+    ModuleVersion        = '1.0.0'
 
     # Supported PSEditions
     CompatiblePSEditions = @('Core')
@@ -69,9 +69,20 @@
     NestedModules        = @('./PS.PasswordState.Extension')
 
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-    FunctionsToExport    = @('Get-Context', 'Connect-', 'Find-Password', 'Get-Password',
-        'Get-PasswordList', 'Invoke-Request', 'New-Password', 'Set-Password',
-        'Remove-Password', 'Test-Connection')
+    FunctionsToExport    = @(
+        'Get-Context', 'Connect-', 'Invoke-Request', 'Test-Connection',
+        
+        'Find-Password', 'Get-Password',
+        'Get-PasswordList', 'New-Password', 'Set-Password',
+        'Move-Password', 'Copy-Password',
+        'Remove-Password', 'Get-PasswordHistory'
+        
+        'Add-DocumentToList',
+        'Add-DocumentToFolder',
+        'Add-DocumentToPassword',
+        'Get-Document',
+        'Remove-Document'
+    )
     #FunctionsToExport    = @('*')
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
@@ -111,6 +122,19 @@
 
             # ReleaseNotes of this module
             ReleaseNotes         = '
+            Version 1.0.0
+            - Added Get-PasswordStatePasswordHistory cmdlet
+            - Added Move-PasswordStatePassword
+            - Added Copy-PasswordStatePassword with possibility of linking.
+            - Added Document Adding cmdlets
+                - Add-PasswordStateDocumentToList
+                - Add-PasswordStateDocumentToFolder
+                - Add-PasswordStateDocumentToPassword
+                - Get-PasswordStateDocument
+                - Remove-PasswordStateDocument (This just throws an error due to Web API Missing an endpoint.)
+            
+            
+
             Version 0.4.3
             - Fixed an issue with the New-PasswordStatePassword cmdlet where the Content-Type header was not set correctly.
             - Improved error handling and added more descriptive error messages for API requests.
@@ -119,7 +143,7 @@
             '
 
             # Prerelease string of this module
-            Prerelease = 'beta'
+            # Prerelease = 'beta'
 
             # Flag to indicate whether the module requires explicit user acceptance for install/update/save
             # RequireLicenseAcceptance = $false
