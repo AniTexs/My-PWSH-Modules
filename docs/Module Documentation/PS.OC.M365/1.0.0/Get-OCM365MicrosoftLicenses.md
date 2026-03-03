@@ -13,7 +13,7 @@ Retrieves all Microsoft 365 licenses and their friendly name.
 ## SYNTAX
 
 ```
-Get-OCM365MicrosoftLicenses [[-DisplayName] <Object>] [[-SkuPartNumber] <Object>] [[-SkuId] <Object>]
+Get-OCM365MicrosoftLicenses [[-DisplayName] <String>] [[-SkuPartNumber] <String>] [[-SkuId] <String>]
  [[-Type] <String>] [-NoWarningMessage] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -43,7 +43,7 @@ Search for a license by its display name.
 It's regex based searching.
 
 ```yaml
-Type: Object
+Type: String
 Parameter Sets: (All)
 Aliases:
 
@@ -58,14 +58,14 @@ Accept wildcard characters: False
 Get a license only by the SkuPartNumber.
 
 ```yaml
-Type: Object
+Type: String
 Parameter Sets: (All)
 Aliases:
 
 Required: False
 Position: 2
 Default value: None
-Accept pipeline input: True (ByPropertyName)
+Accept pipeline input: True (ByPropertyName, ByValue)
 Accept wildcard characters: False
 ```
 
@@ -73,7 +73,7 @@ Accept wildcard characters: False
 Get a license only by the SkuId
 
 ```yaml
-Type: Object
+Type: String
 Parameter Sets: (All)
 Aliases:
 
