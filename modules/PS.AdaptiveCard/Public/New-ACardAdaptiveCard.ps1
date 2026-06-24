@@ -55,6 +55,9 @@ function New-ACardAdaptiveCard {
         [hashtable[]]
         $Actions,
 
+        [Guid]
+        $ProviderId,
+
         [string]
         $Version = "1.6",
 
@@ -74,7 +77,10 @@ function New-ACardAdaptiveCard {
         $Speak,
 
         [string]
-        $Lang
+        $Lang,
+
+        [Switch]
+        $HideOriginalBody
     )
 
     $card = @{
@@ -84,6 +90,9 @@ function New-ACardAdaptiveCard {
         "body"    = $Body
     }
 
+    if($ProviderId) { $card.originator = $ProviderId }
+
+    if($HideOriginalBody.IsPresent){$card.hideOriginalBody = $true}
     if ($Actions) { $card.actions = $Actions }
     if ($Style) { $card.style = $Style.ToString().ToLower() }
     if ($BackgroundImage) { $card.backgroundImage = $BackgroundImage }
