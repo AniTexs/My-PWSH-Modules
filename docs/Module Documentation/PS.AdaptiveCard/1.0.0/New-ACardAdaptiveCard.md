@@ -13,9 +13,9 @@ Creates an Adaptive Card.
 ## SYNTAX
 
 ```
-New-ACardAdaptiveCard [-Body] <Hashtable[]> [[-Actions] <Hashtable[]>] [[-Version] <String>]
- [[-Style] <ContainerStyle>] [[-BackgroundImage] <Hashtable>] [[-MinHeight] <Int32>]
- [[-VerticalAlign] <VerticalAlignment>] [[-Speak] <String>] [[-Lang] <String>]
+New-ACardAdaptiveCard [-Body] <Hashtable[]> [[-Actions] <Hashtable[]>] [[-ProviderId] <Guid>]
+ [[-Version] <String>] [[-Style] <ContainerStyle>] [[-BackgroundImage] <Hashtable>] [[-MinHeight] <Int32>]
+ [[-VerticalAlign] <VerticalAlignment>] [[-Speak] <String>] [[-Lang] <String>] [-HideOriginalBody]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -74,6 +74,21 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
+### -ProviderId
+{{ Fill ProviderId Description }}
+
+```yaml
+Type: Guid
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 3
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -Version
 Adaptive Card schema version.
 Default is "1.6".
@@ -84,7 +99,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 3
+Position: 4
 Default value: 1.6
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -100,7 +115,7 @@ Aliases:
 Accepted values: Default, Emphasis, Good, Attention, Warning, Accent
 
 Required: False
-Position: 4
+Position: 5
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -115,7 +130,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 5
+Position: 6
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -130,7 +145,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 6
+Position: 7
 Default value: 0
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -146,7 +161,7 @@ Aliases:
 Accepted values: Top, Center, Bottom
 
 Required: False
-Position: 7
+Position: 8
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -161,7 +176,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 8
+Position: 9
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
@@ -176,8 +191,23 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 9
+Position: 10
 Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -HideOriginalBody
+{{ Fill HideOriginalBody Description }}
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
