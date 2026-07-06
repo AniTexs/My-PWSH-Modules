@@ -1,0 +1,1 @@
+modules/PS.VaultWarden/Private/bw-win/bw.exe filter=lfs diff=lfs merge=lfs -text
