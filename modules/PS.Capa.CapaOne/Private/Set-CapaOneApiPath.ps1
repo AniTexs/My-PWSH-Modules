@@ -16,7 +16,7 @@ function Set-CapaOneApiPath {
         $Path
     )
     $ReplacementTable = @{
-        '{{OrgId}}' = $($Script:CapaOneStructure.OrgId)
+        '{{OrgId}}' = $($Script:CapaOneCurrentOrganizationId)
         '{{AndroidEnterprise}}' = $($Script:CapaOneAndroidId)
     }
     $ReplacementTable.GetEnumerator() | ForEach-Object {

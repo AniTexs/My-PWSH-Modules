@@ -23,6 +23,7 @@ function Connect-CapaOne {
     try {
         $Response = Invoke-CapaOneApi -Domain "https://portal.capaone.com/api" -Path "/login" -Payload $Payload -Method Post -Session $session
         $Script:CapaOneStructure = $Response
+        $Script:CapaOneCurrentOrganizationId = $Response.OrgId
         $Script:CapaOneSession = $session
         $Script:CapaOneAndroidId = (Invoke-CapaOneApi -Path "/organizations/{{OrgId}}/android/enterprise").enterpriseId
     }

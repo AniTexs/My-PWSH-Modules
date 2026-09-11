@@ -12,7 +12,7 @@
     RootModule        = 'PS.Capa.CapaOne.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '0.1.1'
+    ModuleVersion     = '0.1.2'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -76,7 +76,7 @@
     'Get-CapaOneMDMAppleCertificate', 'Get-CapaOneMDMAppleConfiguration', 'Get-CapaOneMDMAppleEndpoint', 
     'Get-CapaOneMDMAppleEnrollmentConfiguration', 'Get-CapaOneMDMAppleVPP', 'Get-CapaOneReport', 'Get-CapaOneSessionVariable', 
     'Get-CapaOneTag', 'Get-CapaOneUser', 'Get-CapaOneUserProfile', 'New-CapaOneGroup', 'Remove-CapaOneDeviceFromGroup', 
-    'Remove-CapaOneGroup', 'Sync-CapaOneIntegration', 'Update-CapaOneGroup')
+    'Remove-CapaOneGroup', 'Sync-CapaOneIntegration', 'Update-CapaOneGroup','Get-CapaOneOrginazation', 'Set-CapaOneOrginazation')
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
     CmdletsToExport   = '*'
@@ -114,7 +114,7 @@
             # IconUri = ''
 
             # ReleaseNotes of this module
-            ReleaseNotes = 'Updated Get-Help to include examples and descriptions for all functions. Added missing parameters to Get-CapaOneMDM and Get-CapaOneEnrollment.'
+            ReleaseNotes = 'Added possiblity for changing to a sub-organization using Set-CapaOneOrginazation, and viewing available organizations using Get-CapaOneOrginazation.'
 
             # Prerelease string of this module
             # Prerelease = ''
