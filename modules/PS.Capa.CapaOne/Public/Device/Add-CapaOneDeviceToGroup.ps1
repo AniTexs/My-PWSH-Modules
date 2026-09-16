@@ -25,4 +25,5 @@ function Add-CapaOneDeviceToGroup {
         endpointRefIds = $DeviceId
     }
     $response = (Invoke-CapaOneApi -Path "$BaseUri/management/group/$GroupId/windows/endpoint" -Method Put -Payload $Payload)
+    $response
 }

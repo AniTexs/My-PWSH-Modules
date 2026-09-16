@@ -203,4 +203,95 @@ InModuleScope 'PS.OC.Utilities' {
         }
     }
 
+    Describe 'Install-ModuleToDirectory' {
+        BeforeAll {
+            # Define stubs so PowerShellGet commands can be mocked even when the module is not loaded
+            function Find-Module { param($Name, $Repository, $RequiredVersion, $MinimumVersion, $MaximumVersion) }
+            function Save-Module { param([Parameter(ValueFromPipeline = $true)]$InputObject, $Path) }
+        }
+
+        BeforeEach {
+            $script:dest = Join-Path $TestDrive 'Modules'
+            if (Test-Path $script:dest) {
+                Remove-Item -Path $script:dest -Recurse -Force
+            }
+            New-Item -ItemType Directory -Path $script:dest -Force | Out-Null
+
+            # The function returns Get-Module output; stub it so tests stay filesystem-independent
+            Mock Get-Module { } -ModuleName 'PS.OC.Utilities'
+        }
+
+        It 'installs the latest version when the module is not present' {
+            Mock Find-Module { [pscustomobject]@{ Name = 'Pester'; Version = '5.5.0' } } -ModuleName 'PS.OC.Utilities'
+            Mock Save-Module {
+                param($Path)
+                New-Item -ItemType Directory -Path (Join-Path $Path 'Pester\5.5.0') -Force | Out-Null
+            } -ModuleName 'PS.OC.Utilities'
+
+            Install-ModuleToDirectory -Name 'Pester' -Destination $script:dest
+
+            Should -Invoke Save-Module -Times 1 -ModuleName 'PS.OC.Utilities'
+        }
+
+        It 'does not reinstall when the found version is already present' {
+            New-Item -ItemType Directory -Path (Join-Path $script:dest 'Pester\5.5.0') -Force | Out-Null
+            Mock Find-Module { [pscustomobject]@{ Name = 'Pester'; Version = '5.5.0' } } -ModuleName 'PS.OC.Utilities'
+            Mock Save-Module { } -ModuleName 'PS.OC.Utilities'
+
+            Install-ModuleToDirectory -Name 'Pester' -Destination $script:dest -Update
+
+            Should -Invoke Save-Module -Times 0 -Exactly -ModuleName 'PS.OC.Utilities'
+        }
+
+        It 'skips the PSGallery lookup when installed and neither -Update nor a version is supplied' {
+            New-Item -ItemType Directory -Path (Join-Path $script:dest 'Pester\5.5.0') -Force | Out-Null
+            Mock Find-Module { throw 'Find-Module should not be called' } -ModuleName 'PS.OC.Utilities'
+            Mock Save-Module { } -ModuleName 'PS.OC.Utilities'
+
+            Install-ModuleToDirectory -Name 'Pester' -Destination $script:dest
+
+            Should -Invoke Find-Module -Times 0 -Exactly -ModuleName 'PS.OC.Utilities'
+            Should -Invoke Save-Module -Times 0 -Exactly -ModuleName 'PS.OC.Utilities'
+        }
+
+        It 'installs a newer version when -Update is supplied' {
+            New-Item -ItemType Directory -Path (Join-Path $script:dest 'Pester\5.4.0') -Force | Out-Null
+            Mock Find-Module { [pscustomobject]@{ Name = 'Pester'; Version = '5.5.0' } } -ModuleName 'PS.OC.Utilities'
+            Mock Save-Module {
+                param($Path)
+                New-Item -ItemType Directory -Path (Join-Path $Path 'Pester\5.5.0') -Force | Out-Null
+            } -ModuleName 'PS.OC.Utilities'
+
+            Install-ModuleToDirectory -Name 'Pester' -Destination $script:dest -Update
+
+            Should -Invoke Save-Module -Times 1 -ModuleName 'PS.OC.Utilities'
+        }
+
+        It 'removes older versions with -RemoveOtherVersions' {
+            New-Item -ItemType Directory -Path (Join-Path $script:dest 'Pester\5.4.0') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $script:dest 'Pester\5.5.0') -Force | Out-Null
+            Mock Find-Module { throw 'Find-Module should not be called' } -ModuleName 'PS.OC.Utilities'
+
+            Install-ModuleToDirectory -Name 'Pester' -Destination $script:dest -RemoveOtherVersions
+
+            Test-Path (Join-Path $script:dest 'Pester\5.4.0') | Should -BeFalse
+            Test-Path (Join-Path $script:dest 'Pester\5.5.0') | Should -BeTrue
+        }
+
+        It 'keeps all versions when -RemoveOtherVersions is combined with -WhatIf' {
+            New-Item -ItemType Directory -Path (Join-Path $script:dest 'Pester\5.4.0') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $script:dest 'Pester\5.5.0') -Force | Out-Null
+
+            Install-ModuleToDirectory -Name 'Pester' -Destination $script:dest -RemoveOtherVersions -WhatIf
+
+            Test-Path (Join-Path $script:dest 'Pester\5.4.0') | Should -BeTrue
+            Test-Path (Join-Path $script:dest 'Pester\5.5.0') | Should -BeTrue
+        }
+
+        It 'rejects RequiredVersion combined with MinimumVersion' {
+            { Install-ModuleToDirectory -Name 'Pester' -Destination $script:dest -RequiredVersion '5.5.0' -MinimumVersion '5.0.0' } |
+                Should -Throw
+        }
+    }
+
 }
