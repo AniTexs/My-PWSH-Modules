@@ -21,7 +21,7 @@ function Connect-CapaOne {
         password = $Credential.GetNetworkCredential().Password
     }
     try {
-        $Response = Invoke-CapaOneApi -Domain "https://portal.capaone.com/api" -Path "/login" -Payload $Payload -Method Post -Session $session
+        $Response = Invoke-CapaOneApi -Domain "https://dash.capaone.com/api" -Path "/login" -Payload $Payload -Method Post -Session $session
         $Script:CapaOneStructure = $Response
         $Script:CapaOneCurrentOrganizationId = $Response.OrgId
         $Script:CapaOneSession = $session
